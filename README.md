@@ -1,66 +1,387 @@
 # DevFlow AI
 
-DevFlow AI 是一个面向 GitHub PR / Issue 研发协作的全栈 AI Agent 项目。系统会连接仓库数据，分析 Issue、PR diff、CI 日志、项目知识库和本地工作区代码，并返回结构化建议与安全的操作草稿。
+DevFlow AI 是一个面向 GitHub PR、Issue 与 CI 场景的全栈 AI Agent 协作系统。
+
+它不是“用户问一句、大模型答一句”的聊天壳，而是一条研发协作流水线：
+
+> 先找上下文，再做判断，最后把过程留下来。
+
+系统会围绕仓库、Issue、PR、CI、项目文档、会话记忆和本地代码工作区进行取证，再由 ChatAgent、专用 Agent 与多 Agent 工作流完成分析，最终输出带依据、可追踪、可复盘的工程建议。
+
+## 一条请求如何经过系统
+
+以“最新 PR 能不能合并？”为例，系统不会直接让模型生成答案，而是依次完成：
+
+1. **定位**：确认当前仓库、会话、PR 和问题范围。
+2. **取证**：查询 PR、CI、Issue、RAG 历史证据、项目文档和代码工作区。
+3. **判断**：简单问题调用单个专用 Agent；复杂问题进入多 Agent 工作流。
+4. **沉淀**：保存消息、运行记录、工具轨迹、引用证据、记忆和评测结果。
+
+```mermaid
+flowchart LR
+    Q["用户问题"] --> C["定位仓库 / 会话 / 目标"]
+    C --> E["RAG 与工具取证"]
+    E --> J{"问题类型"}
+    J -->|单点问题| S["专用 Agent"]
+    J -->|复杂工程判断| W["多 Agent 工作流"]
+    S --> A["形成建议与引用"]
+    W --> A
+    A --> P["沉淀记忆 / 轨迹 / 评测数据"]
+    P --> R["返回前端并支持复盘"]
+```
+
+## 整体架构
+
+DevFlow AI 采用分层设计：
+
+```mermaid
+flowchart TB
+    subgraph U["用户层"]
+        Chat["Chat"]
+        Repo["仓库总览"]
+        IssueUI["Issue"]
+        PRUI["PR"]
+        CIUI["CI"]
+        ReportUI["周报"]
+        EvalUI["评测"]
+    end
+
+    subgraph API["应用服务层"]
+        FastAPI["FastAPI API"]
+        Session["仓库 / 会话 / 流式响应"]
+        Persist["运行记录与结果保存"]
+    end
+
+    subgraph Agent["智能协作层"]
+        ChatAgent["ChatAgent"]
+        Specialized["专用 Agent"]
+        Planner["PlannerAgent"]
+        Orchestrator["WorkflowOrchestrator"]
+        Skills["Skill Registry"]
+    end
+
+    subgraph Tools["知识与工具层"]
+        RAG["RAG"]
+        Memory["Memory"]
+        Workspace["Workspace Tools"]
+        GitHub["GitHub Tools"]
+        LLM["LLM API"]
+    end
+
+    subgraph Data["数据基础层"]
+        PostgreSQL["PostgreSQL"]
+        Milvus["Milvus"]
+        ObjectStore["S3 / Silo"]
+        Runtime["AgentRun / Tool Trace / Eval"]
+    end
+
+    U --> API
+    API --> Agent
+    Agent --> Tools
+    Tools --> Data
+    Data --> Tools
+    Tools --> Agent
+    Agent --> API
+    API --> U
+```
+
+可以把它压缩成一句话：
+
+> **上层负责交互，中层负责调度和判断，下层负责证据与记忆。**
+
+## 五层架构职责
+
+| 层级 | 主要职责 | 代表模块 |
+| --- | --- | --- |
+| 用户层 | 用户最终看到和操作的界面 | Chat、仓库总览、Issue、PR、CI、周报、评测 |
+| 应用服务层 | 请求流转与业务编排 | 仓库定位、会话管理、流式返回、结果持久化 |
+| 智能协作层 | 判断问题类型并组织工具与 Agent | ChatAgent、专用 Agent、PlannerAgent、WorkflowOrchestrator、Skill Registry |
+| 知识与工具层 | 给 Agent 提供“手和眼睛” | RAG、Memory、Workspace、GitHub API、LLM API |
+| 数据基础层 | 保存事实、运行过程和评测数据 | PostgreSQL、Milvus、对象存储、AgentRun、Tool Trace、Eval |
+
+## RAG 知识库
+
+RAG 是 **Retrieval-Augmented Generation（检索增强生成）** 的缩写。
+
+在 DevFlow AI 中，RAG 的职责不是替模型做最终判断，而是：
+
+> **在模型回答前，把与当前问题相关的项目证据找回来。**
+
+RAG 分为两个核心环节：
+
+### 知识入库
+
+1. 提取 Issue、PR、Review 评论、失败 CI 日志、项目文档和长期记忆。
+2. 清洗与切分文本。
+3. 生成 Embedding。
+4. 写入 Milvus 向量库，并保留来源与元数据。
+
+### 知识查询
+
+1. 对用户问题进行向量化或关键词检索。
+2. 使用混合检索召回候选证据。
+3. 执行 Rerank 与相关性过滤。
+4. 将证据按上下文预算组装后交给 ChatAgent。
+
+```mermaid
+flowchart LR
+    I["Issue / PR / CI / 文档 / 记忆"] --> Clean["清洗与切分"]
+    Clean --> Embed["Embedding"]
+    Embed --> Store["Milvus"]
+    Q["用户问题"] --> Retrieve["向量 + 关键词召回"]
+    Store --> Retrieve
+    Retrieve --> Rerank["Rerank / 过滤"]
+    Rerank --> Context["证据上下文"]
+    Context --> ChatAgent["ChatAgent"]
+```
+
+进入 RAG 的主要内容：
+
+- Issue 标题与正文。
+- PR 标题、正文和 Review 评论。
+- 有日志的失败 CI。
+- 项目文档与人工上传知识。
+- 经过批准、适合长期复用的记忆。
+
+代码源码以当前工作区为准，优先使用文件读取和词法检索；Issue、PR、CI 的状态字段直接查询数据库或 API；会话历史由专用记忆系统按会话范围读取。
+
+RAG 不是所有项目数据的统一入口，它更像一个会翻项目旧资料的同事。
+
+## 对话 Agent（ChatAgent）
+
+ChatAgent 是 DevFlow AI 最重要的交互入口，也是一个带状态机的“前台调度员”。
+
+它首先要判断：
+
+- “这个 Issue 应该谁处理？” -> Issue 分析能力。
+- “这个 PR 风险在哪？” -> PR 审查能力。
+- “CI 为什么失败？” -> CI 排障能力。
+- “最新 PR 能不能合并？” -> 多 Agent 工作流。
+
+ChatAgent 的核心职责不是替所有模块干活，而是 **组织这些模块一起干活**。
+
+### ReAct 与 LangGraph
+
+ReAct 是 reasoning（推理）+ acting（行动）的简称。
+
+DevFlow AI 采用 ReAct 思想，并结合 LangGraph、原生工具调用和工程可观测记录，形成闭环：
+
+```mermaid
+flowchart TD
+    Prepare["准备 Graph 状态<br/>用户消息 / 会话 / 记忆 / Skill / 工具"] --> Decision["model_decision<br/>思考下一步"]
+    Decision -->|直接回答| Answer["最终回答"]
+    Decision -->|需要证据| Action["tool_action<br/>执行工具"]
+    Action --> Observe["观察工具结果"]
+    Observe --> Decision
+```
+
+关键节点：
+
+1. **准备 Graph 状态**：加入用户消息、会话、记忆、Skill 和可用工具。
+2. **模型决策节点**：由模型决定直接回答，还是调用工具。
+3. **工具执行节点**：执行 RAG 检索、工作区读取、GitHub 查询或多 Agent 工作流。
+4. **条件边回到模型**：工具结果先作为观察，再由模型决定继续取证还是输出最终答案。
+
+> 大模型可以选择工具，但工具如何执行、过程如何记录、结果如何返回，都由系统控制。
+
+## 专用 Agent
+
+专用 Agent 将“角色设定”工程化和系统化，使不同任务拥有独立、互不干扰的 Prompt 上下文。
+
+| Agent | 关注点 | 典型输出 |
+| --- | --- | --- |
+| Issue Agent | 分类、优先级、复杂度、负责人、重复问题 | 分诊结果与行动项 |
+| PR Review Agent | 改动范围、风险文件、测试覆盖、兼容性、安全性 | 审查意见与合入建议 |
+| CI Debug Agent | 失败类型、关键日志、失败步骤、可能根因 | 排障步骤与修复建议 |
+| Report Agent | 仓库活动、Issue/PR/CI 汇总 | 工程周报 |
+| Safety Agent | 写操作风险、权限与审批要求 | 安全草稿与风险提示 |
+
+拆开之后，每个 Agent 的输入、判断标准和输出结构都更清晰：
+
+- Issue Agent 不需要获取所有 CI 日志细节。
+- CI Debug Agent 不需要判断需求优先级。
+- PR Review Agent 不应该顺手生成周报。
+
+职责分工明确，系统才更容易扩展、测试和复盘。
+
+## 多 Agent 工作流
+
+对于跨领域问题，单点工具调用并不够，需要受控的 **Plan-Execute-Replan** 工作流。
+
+典型问题包括：
+
+- 这个 CI 失败会不会影响 PR 合入？
+- 这个需求现在应该优先处理吗？
+- 当前版本发布还有哪些阻塞？
+
+```mermaid
+flowchart TD
+    ChatAgent["ChatAgent<br/>判断问题类型"] --> Planner["PlannerAgent<br/>拆解任务"]
+    Planner --> Spec["WorkflowSpec<br/>结构化计划"]
+    Spec --> Orchestrator["WorkflowOrchestrator"]
+    Orchestrator --> PR["PR Agent"]
+    Orchestrator --> CI["CI Agent"]
+    Orchestrator --> Issue["Issue Agent"]
+    Orchestrator --> RAG["RAG"]
+    PR --> Observer["ObserverAgent"]
+    CI --> Observer
+    Issue --> Observer
+    RAG --> Observer
+    Observer -->|证据缺口| Orchestrator
+    Observer -->|证据充分| Synthesis["SynthesisAgent"]
+    Synthesis --> Result["最终工程结论"]
+```
+
+各角色职责：
+
+- **PlannerAgent**：把模糊问题拆成可执行任务。
+- **WorkflowOrchestrator**：按依赖关系调度任务；可并行则并行，不可并行则等待。
+- **专用 Agent**：分别取证，例如 PR 看变更、CI 看日志、RAG 找历史材料。
+- **ObserverAgent**：检查证据缺口、冲突与结论稳定性，必要时触发补查。
+- **SynthesisAgent**：综合全部材料，生成最终结论。
+
+多 Agent 的价值不在于 Agent 数量多，而在于：
+
+> **复杂问题可以先拆开取证，再合起来判断。**
+
+## 数据沉淀与质量闭环
+
+研发协作不是一次性问答。下一轮对话、效果评测、安全审计和问题复盘，都依赖历史过程。
+
+系统会保存：
+
+- 会话消息和会话摘要。
+- Agent 运行记录。
+- 工具调用轨迹。
+- 引用证据。
+- 长期记忆。
+- 评测结果。
+
+```mermaid
+flowchart LR
+    Request["用户请求"] --> Run["AgentRun"]
+    Run --> Trace["工具轨迹 + 引用证据"]
+    Trace --> Memory["长期记忆"]
+    Trace --> Eval["自动化评测"]
+    Memory --> Next["下一轮上下文"]
+    Eval --> Improve["质量诊断与迭代"]
+    Next --> Request
+    Improve --> Request
+```
+
+这些记录让系统具备可追踪、可复盘、可评测的能力。
+
+## 长上下文压缩
+
+Agent 一旦持续工作，上下文会快速累积：用户消息、模型回答、工具结果、RAG 证据、CI 日志、PR 分析和历史摘要。
+
+如果每次都把全部历史原样塞给模型，会遇到两个问题：
+
+1. 上下文窗口不足，请求失败。
+2. 无关内容过多，模型抓不住当前重点。
+
+长上下文压缩不是删除历史，而是把历史整理成更适合继续工作的形态：
+
+- 最近几轮对话尽量保留原文。
+- 重要结论沉淀为摘要和长期记忆。
+- 与当前问题相关的历史通过 RAG 或证据检索重新召回。
+- 很长的工具结果只保留来源、关键片段和恢复方式。
+- 历史过长时记录压缩起点，后续对话从摘要继续。
+
+> 压缩不是让 Agent 忘掉过去，而是让它带着更清楚、更轻量的过去继续工作。
 
 ## 核心能力
 
 - 连接并同步 GitHub 仓库中的 Issue、Pull Request、PR 文件、Review 评论、Workflow Run、Job 和日志。
 - Issue 分析：分类、优先级、复杂度、推荐负责人、重复候选和行动项。
-- PR 审查：摘要、关键变更、风险点、检查清单、测试建议和需要重点关注的文件。
-- CI 排障：失败类型、可能原因、排查步骤和相关上下文。
-- Agent 对话：`ChatAgent` 使用原生工具调用，串联工作区、记忆、RAG、Issue、PR、CI、周报和安全工具。
-- 多 Agent 工作流审查：`WorkflowOrchestrator` 构建 Planner -> 专用 Agent -> Observer -> Synthesis 的闭环，用于 PR 就绪度、阻塞项、优先级和跨领域工程决策。
-- Skill Runtime：按用户显式指定或触发条件选择 `SKILL.md`，只向当前任务加载完整指令与受限资源；显式 Skill 校验允许工具，多 Agent 中的专用 Agent 分别加载自己的 Skill，并把版本、激活原因、指令摘要和执行校验写入 trace。
-- 工作区代码工具：安全地列出文件、读取文件和搜索本地代码。
-- RAG 聚焦 Issue 描述、PR 说明与 Review 评论、失败 CI 日志、项目文档、上传知识和已批准的长期记忆；当前代码走工作区/词法检索，团队与实时状态走结构化查询。
-- 生成工程周报。
-- 基础 Eval 覆盖 Issue 分类、PR 覆盖度、RAG 命中率、工具 schema 就绪度和结构化输出校验。
+- PR 审查：摘要、关键变更、风险点、检查清单、测试建议和重点文件。
+- CI 排障：失败类型、可能原因、排查步骤和上下文。
+- ChatAgent 对话：串联工作区、记忆、RAG、Issue、PR、CI、周报和安全工具。
+- 多 Agent 工作流：执行 Planner -> 专用 Agent -> Observer -> Synthesis 闭环。
+- Skill Runtime：按任务加载完整 `SKILL.md`，并把版本、激活原因和执行校验写入 trace。
+- 工作区代码工具：安全列出文件、读取文件和搜索本地代码。
+- RAG：覆盖 Issue、PR、Review、失败 CI、项目文档、上传知识和长期记忆。
+- 工程周报与 RAGAS 质量评测。
 
 ## 技术栈
 
-- 后端：Python、FastAPI、Pydantic、SQLAlchemy、PostgreSQL、Milvus、httpx、LangChain。
-- Agent 编排：原生工具调用 + 专用分析 Agent。
-- 前端：Next.js、TypeScript、Tailwind CSS、React Query。
-- 基础设施：Docker Compose 与 `.env` 配置。
+- **后端**：Python、FastAPI、Pydantic、SQLAlchemy、PostgreSQL、Milvus、httpx、LangChain、LangGraph。
+- **Agent**：原生工具调用、ReAct、专用 Agent、Plan-Execute-Replan、Skill Registry。
+- **RAG**：文档解析、切片、Qwen Embedding、向量检索、关键词检索、Rerank、引用生成。
+- **前端**：Next.js、TypeScript、Tailwind CSS、React Query。
+- **基础设施**：Docker Compose、etcd、Milvus、S3 兼容对象存储。
 
-## 架构
+## 代码结构
 
-```mermaid
-flowchart TD
-    FE["Next.js 前端"] --> API["FastAPI 后端"]
-    API --> DB["PostgreSQL"]
-    API --> Milvus["Milvus 向量库"]
-    API --> GH["GitHub REST API"]
-    API --> LLM["OpenAI 兼容 LLM API"]
-    API --> Conv["对话 Agent"]
-    Conv --> Workflow["工作流编排器"]
-    Workflow --> Planner["规划 Agent"]
-    Workflow --> Observer["观察 Agent"]
-    Workflow --> Synthesis["综合 Agent"]
-    Conv --> Workspace["工作区工具"]
-    Conv --> Memory["记忆 / RAG 工具"]
-    Conv --> Issue["Issue 分析 Agent"]
-    Conv --> PR["PR 审查 Agent"]
-    Conv --> CI["CI 排障 Agent"]
-    Conv --> Report["周报 Agent"]
-    Conv --> Safety["安全 Agent"]
-    Conv --> Skills["Skill 注册中心"]
+```text
+DevFlow-AI/
+├─ backend/
+│  └─ app/
+│     ├─ api/                 # FastAPI 路由与请求入口
+│     ├─ core/                # 配置、安全与日志
+│     ├─ db/                  # 数据模型与数据库会话
+│     ├─ schemas/             # API 数据结构
+│     ├─ services/
+│     │  ├─ agents/           # ChatAgent、专用 Agent、工作流编排
+│     │  ├─ github/           # GitHub 数据访问与操作
+│     │  ├─ llm/              # LLM 客户端、提示词与结构化输出
+│     │  └─ rag/              # 入库、检索、重排、问答与向量存储
+│     ├─ skills/              # SKILL.md 指令与资源
+│     └─ tests/               # 后端测试
+├─ frontend/                  # Next.js 前端
+├─ docs/                      # 架构、API 与示例文档
+├─ scripts/                   # 启动、演示数据与维护脚本
+└─ docker-compose.yml         # PostgreSQL、Milvus、etcd、对象存储
 ```
 
 ## 快速开始
 
+### 1. 配置环境变量
+
 ```bash
 cp .env.example .env
-docker compose up -d postgres etcd minio milvus
+```
 
+按需填写：
+
+- `LLM_API_KEY`
+- `LLM_BASE_URL`
+- `LLM_MODEL`
+- `GITHUB_TOKEN`
+- Embedding 与 Rerank 相关配置
+
+### 2. 启动基础设施
+
+```bash
+docker compose up -d postgres etcd minio milvus
+```
+
+### 3. 启动后端
+
+```bash
 cd backend
 python -m venv .venv
+```
+
+Windows：
+
+```powershell
 .venv\Scripts\activate
 pip install -r requirements.txt
+pip install -r requirements-local-embedding.txt
 uvicorn app.main:app --reload
 ```
 
-另开一个终端：
+macOS / Linux：
+
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -r requirements-local-embedding.txt
+uvicorn app.main:app --reload
+```
+
+### 4. 启动前端
 
 ```bash
 cd frontend
@@ -68,71 +389,35 @@ npm install
 npm run dev
 ```
 
-默认地址：
+### 默认地址
 
+- 前端：http://localhost:3000
 - 后端：http://localhost:8000
 - API 文档：http://localhost:8000/docs
-- 前端：http://localhost:3000
 
-## RAG 知识问答系统
+## Windows 本地演示
 
-项目内置了与第 7.1 节流程一一对应的完整 RAG 系统：知识库创建向导、文档解析、段落感知切片、Embedding、向量/关键词混合检索、重排、召回测试、问答工作室、上下文组装、基于证据生成和编号引用。支持 TXT、Markdown、PDF、DOCX、JSON、CSV 与日志文件；重复文件会按 SHA-256 跳过。
-
-对话链路采用混合 RAG：`ContextAssembler` 会在调用 ChatAgent 前按原始问题检索并注入证据；进入推理循环后，模型仍可把 `rag.search_similar_documents` 当作工具，改写查询、连续补查不同资料，并根据多次工具结果交叉验证答案。
-
-项目不会把所有私域数据都向量化。只有需要跨来源语义召回、会反复使用的非结构化知识进入 RAG；源码与配置以当前 checkout 为准，优先通过 `workspace.search_code` 和 `workspace.read_file` 检索；Issue、PR、CI 的状态字段、团队成员和周报等结构化或派生数据直接查数据库/API。RAG 返回的是候选证据，涉及实时状态和当前代码时仍要回到权威数据源核验。
-
-从旧版本升级后，请对每个知识库调用一次 `POST /api/rag/{repo_id}/reindex`。重建会按新边界清理历史向量和旧会话 Document；只部署代码不会主动删除已有索引。
-
-如果只想先验证页面、结构化数据和无模型兜底回答，Windows 本地可以用下面的脚本启动 SQLite 演示环境：
+只需要验证页面、结构化数据和关键词检索时，可以启动 SQLite 演示模式：
 
 ```powershell
 .\scripts\start_rag.ps1
 ```
 
-脚本会关闭 Milvus，使用 deterministic embedding 和启发式重排，并停用演示知识库的 `0.8` 分数阈值，避免只有关键词分支时全部候选都被过滤。因此它可以验证页面、上传解析、关系库存储、Hybrid 的关键词分支和引用展示，但向量检索状态会明确显示 `degraded`，不能用来证明完整 RAG 已经跑通。要验证向量召回、混合检索和重建索引，仍需先按“快速开始”启动 PostgreSQL、etcd、MinIO 和 Milvus。
+该模式会关闭 Milvus，并使用 deterministic embedding 与启发式重排。
 
-知识库默认选择 `Qwen/Qwen3-Embedding-0.6B` 与 `qwen3-rerank`。安装 `backend/requirements-local-embedding.txt` 后可运行本地 Qwen Embedding；配置 `DASHSCOPE_API_KEY`、`RERANK_BASE_URL` 后可切换百炼 `text-embedding-v4` 与 `qwen3-rerank`。默认 Embedding 依赖缺失时系统会明确报错，不会在生产配置下静默改用另一套向量空间；只有上面的本地演示脚本会显式选择 deterministic embedding。已经配置 `LLM_API_KEY` 时，可用 `.\scripts\start_rag.ps1 -UseConfiguredLLM` 启用模型生成。
+验证完整向量检索、混合检索和重建索引，仍需启动 PostgreSQL、etcd、Milvus 和对象存储。
 
-RAG API：
+## 关键设计结论
 
-```text
-POST /api/rag/knowledge-bases
-GET  /api/rag/knowledge-bases
-GET  /api/rag/knowledge-bases/{repo_id}
-POST /api/rag/knowledge-bases/{repo_id}/documents
-POST /api/rag/knowledge-bases/{repo_id}/retrieval-tests
-GET  /api/rag/{repo_id}/status
-POST /api/rag/{repo_id}/search
-POST /api/rag/{repo_id}/ask
-POST /api/rag/{repo_id}/reindex
-```
+DevFlow AI 的系统结构可以概括为：
 
-## ChatAgent RAGAS 评测
+- 前端负责交互，后端负责任务流转，Agent 负责判断，数据层负责保存事实。
+- RAG 保证回答基于项目证据，而不是凭空生成。
+- ChatAgent 理解用户意图，并决定调用工具还是进入复杂工作流。
+- 专用 Agent 隔离 Issue、PR、CI 等不同任务的 Prompt 与判断标准。
+- PlannerAgent 与 WorkflowOrchestrator 处理跨领域、需要多方取证的问题。
+- 数据沉淀、质量闭环和上下文压缩支撑长期协作、复盘与评测。
 
-启动主应用后打开 `http://127.0.0.1:3000/evals`，选择仓库、固定评测集和 Top-K，再点击“运行固定 RAGAS 评测”。评测会在隔离会话中真实运行生产 ChatAgent 和工具集，收集预检索与 Agent 二次检索证据，然后使用 Ragas 0.4 Collections API 计算 Context Precision、Context Recall、Faithfulness、Answer Relevancy 和 Agent Goal Accuracy。结果会保存评测集 Hash、阈值、逐题工具轨迹、检索证据、硬规则与失败诊断，便于对同一基线做回归。
+最终链路是：
 
-默认 Judge 复用 `LLM_API_KEY`、`LLM_BASE_URL` 和 `LLM_MODEL`；也可以通过 `.env` 中的 `RAGAS_JUDGE_API_KEY`、`RAGAS_JUDGE_BASE_URL`、`RAGAS_JUDGE_MODEL` 单独配置。主项目内置的正式基准位于 `docs/datas/evals/rag_cases.json`，启动时会检查用例引用的文档是否已进入当前仓库知识库：
-
-```http
-POST /api/evals/rag/run
-Content-Type: application/json
-
-{
-  "repo_id": "<repository-uuid>",
-  "run_judge": true,
-  "top_k": 5,
-  "suite_id": "devflow-real-project-rag-baseline"
-}
-```
-
-提交接口会立即返回 `queued` 状态和 `eval_id`，ChatAgent 与 RAGAS 在后台继续运行。通过 `GET /api/evals/{eval_id}` 轮询 `result.progress`；状态变为 `passed`、`failed`、`error` 或 `no_cases` 时结束。网页会自动轮询，刷新或离开页面不会中断已经提交的任务。
-
-整体通过要求硬规则全部满足，并且五项语义指标都达到 `.env` 中对应的 `RAGAS_*_MIN` 门槛。页面把“执行状态”和“质量状态”分开显示：低分是质量失败；Judge 调用失败或指标缺失是评测不完整，不能伪装成质量结论。
-
-评测失败后可以直接在同一页面继续处理：
-
-- 展开 Case 查看实际回答、参考答案、检索来源、工具轨迹和可执行诊断；
-- 对 Judge 超时或缺失指标点击“仅重试异常评分”，复用已经保存的回答和证据，不重新运行 ChatAgent；
-- 选择两个相同评测集 Hash、Ragas/Judge 配置和 Top-K 的结果做回归对比；
-- 生成 `create_issue` 类型的 ActionDraft，把失败 Case、证据和建议带入人工确认流程，不会直接写入 GitHub。
+> **用户提出问题，系统定位上下文，RAG 和工具负责取证，ChatAgent 负责调度，专用 Agent 负责专项分析，多 Agent 工作流负责复杂判断，最后把过程沉淀成记忆、记录和评测数据。**
