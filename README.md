@@ -17,73 +17,21 @@ DevFlow AI 是一个面向 GitHub PR、Issue 与 CI 场景的全栈 AI Agent 协
 3. **判断**：简单问题调用单个专用 Agent；复杂问题进入多 Agent 工作流。
 4. **沉淀**：保存消息、运行记录、工具轨迹、引用证据、记忆和评测结果。
 
-```mermaid
-flowchart LR
-    Q["用户问题"] --> C["定位仓库 / 会话 / 目标"]
-    C --> E["RAG 与工具取证"]
-    E --> J{"问题类型"}
-    J -->|单点问题| S["专用 Agent"]
-    J -->|复杂工程判断| W["多 Agent 工作流"]
-    S --> A["形成建议与引用"]
-    W --> A
-    A --> P["沉淀记忆 / 轨迹 / 评测数据"]
-    P --> R["返回前端并支持复盘"]
-```
+<p align="center">
+  <a href="docs/images/architecture/02-request-lifecycle.png">
+    <img src="docs/images/architecture/02-request-lifecycle.png" alt="一条请求从定位、取证、判断到沉淀的完整流程" width="820">
+  </a>
+</p>
 
 ## 整体架构
 
 DevFlow AI 采用分层设计：
 
-```mermaid
-flowchart TB
-    subgraph U["用户层"]
-        Chat["Chat"]
-        Repo["仓库总览"]
-        IssueUI["Issue"]
-        PRUI["PR"]
-        CIUI["CI"]
-        ReportUI["周报"]
-        EvalUI["评测"]
-    end
-
-    subgraph API["应用服务层"]
-        FastAPI["FastAPI API"]
-        Session["仓库 / 会话 / 流式响应"]
-        Persist["运行记录与结果保存"]
-    end
-
-    subgraph Agent["智能协作层"]
-        ChatAgent["ChatAgent"]
-        Specialized["专用 Agent"]
-        Planner["PlannerAgent"]
-        Orchestrator["WorkflowOrchestrator"]
-        Skills["Skill Registry"]
-    end
-
-    subgraph Tools["知识与工具层"]
-        RAG["RAG"]
-        Memory["Memory"]
-        Workspace["Workspace Tools"]
-        GitHub["GitHub Tools"]
-        LLM["LLM API"]
-    end
-
-    subgraph Data["数据基础层"]
-        PostgreSQL["PostgreSQL"]
-        Milvus["Milvus"]
-        ObjectStore["S3 / Silo"]
-        Runtime["AgentRun / Tool Trace / Eval"]
-    end
-
-    U --> API
-    API --> Agent
-    Agent --> Tools
-    Tools --> Data
-    Data --> Tools
-    Tools --> Agent
-    Agent --> API
-    API --> U
-```
+<p align="center">
+  <a href="docs/images/architecture/01-overall-architecture.png">
+    <img src="docs/images/architecture/01-overall-architecture.png" alt="DevFlow AI 分层整体架构" width="820">
+  </a>
+</p>
 
 可以把它压缩成一句话：
 
@@ -123,17 +71,11 @@ RAG 分为两个核心环节：
 3. 执行 Rerank 与相关性过滤。
 4. 将证据按上下文预算组装后交给 ChatAgent。
 
-```mermaid
-flowchart LR
-    I["Issue / PR / CI / 文档 / 记忆"] --> Clean["清洗与切分"]
-    Clean --> Embed["Embedding"]
-    Embed --> Store["Milvus"]
-    Q["用户问题"] --> Retrieve["向量 + 关键词召回"]
-    Store --> Retrieve
-    Retrieve --> Rerank["Rerank / 过滤"]
-    Rerank --> Context["证据上下文"]
-    Context --> ChatAgent["ChatAgent"]
-```
+<p align="center">
+  <a href="docs/images/architecture/03-rag-pipeline.png">
+    <img src="docs/images/architecture/03-rag-pipeline.png" alt="RAG 知识入库与知识查询流程" width="820">
+  </a>
+</p>
 
 进入 RAG 的主要内容：
 
@@ -151,6 +93,12 @@ RAG 不是所有项目数据的统一入口，它更像一个会翻项目旧资�
 
 ChatAgent 是 DevFlow AI 最重要的交互入口，也是一个带状态机的“前台调度员”。
 
+<p align="center">
+  <a href="docs/images/architecture/04-chatagent-overview.png">
+    <img src="docs/images/architecture/04-chatagent-overview.png" alt="ChatAgent 在 DevFlow AI 中的调度位置" width="820">
+  </a>
+</p>
+
 它首先要判断：
 
 - “这个 Issue 应该谁处理？” -> Issue 分析能力。
@@ -166,14 +114,11 @@ ReAct 是 reasoning（推理）+ acting（行动）的简称。
 
 DevFlow AI 采用 ReAct 思想，并结合 LangGraph、原生工具调用和工程可观测记录，形成闭环：
 
-```mermaid
-flowchart TD
-    Prepare["准备 Graph 状态<br/>用户消息 / 会话 / 记忆 / Skill / 工具"] --> Decision["model_decision<br/>思考下一步"]
-    Decision -->|直接回答| Answer["最终回答"]
-    Decision -->|需要证据| Action["tool_action<br/>执行工具"]
-    Action --> Observe["观察工具结果"]
-    Observe --> Decision
-```
+<p align="center">
+  <a href="docs/images/architecture/05-chatagent-langgraph.png">
+    <img src="docs/images/architecture/05-chatagent-langgraph.png" alt="ChatAgent 的 LangGraph 工具调用流程" width="820">
+  </a>
+</p>
 
 关键节点：
 
@@ -183,6 +128,16 @@ flowchart TD
 4. **条件边回到模型**：工具结果先作为观察，再由模型决定继续取证还是输出最终答案。
 
 > 大模型可以选择工具，但工具如何执行、过程如何记录、结果如何返回，都由系统控制。
+
+### 工具调用可观测
+
+ChatAgent 会实时展示工具调用过程。用户不仅能看到最终答案，还能看到系统查询了什么、调用了什么、引用了哪些证据。
+
+<p align="center">
+  <a href="docs/images/architecture/06-tool-call-trace.png">
+    <img src="docs/images/architecture/06-tool-call-trace.png" alt="ChatAgent 工具调用与证据展示" width="360">
+  </a>
+</p>
 
 ## 专用 Agent
 
@@ -195,6 +150,12 @@ flowchart TD
 | CI Debug Agent | 失败类型、关键日志、失败步骤、可能根因 | 排障步骤与修复建议 |
 | Report Agent | 仓库活动、Issue/PR/CI 汇总 | 工程周报 |
 | Safety Agent | 写操作风险、权限与审批要求 | 安全草稿与风险提示 |
+
+<p align="center">
+  <a href="docs/images/architecture/07-specialized-agents.png">
+    <img src="docs/images/architecture/07-specialized-agents.png" alt="Issue、PR、CI 等专用 Agent 的职责分工" width="820">
+  </a>
+</p>
 
 拆开之后，每个 Agent 的输入、判断标准和输出结构都更清晰：
 
@@ -214,23 +175,11 @@ flowchart TD
 - 这个需求现在应该优先处理吗？
 - 当前版本发布还有哪些阻塞？
 
-```mermaid
-flowchart TD
-    ChatAgent["ChatAgent<br/>判断问题类型"] --> Planner["PlannerAgent<br/>拆解任务"]
-    Planner --> Spec["WorkflowSpec<br/>结构化计划"]
-    Spec --> Orchestrator["WorkflowOrchestrator"]
-    Orchestrator --> PR["PR Agent"]
-    Orchestrator --> CI["CI Agent"]
-    Orchestrator --> Issue["Issue Agent"]
-    Orchestrator --> RAG["RAG"]
-    PR --> Observer["ObserverAgent"]
-    CI --> Observer
-    Issue --> Observer
-    RAG --> Observer
-    Observer -->|证据缺口| Orchestrator
-    Observer -->|证据充分| Synthesis["SynthesisAgent"]
-    Synthesis --> Result["最终工程结论"]
-```
+<p align="center">
+  <a href="docs/images/architecture/08-multi-agent-workflow.png">
+    <img src="docs/images/architecture/08-multi-agent-workflow.png" alt="Planner、WorkflowOrchestrator、Observer 与 Synthesis 协作流程" width="820">
+  </a>
+</p>
 
 各角色职责：
 
@@ -257,17 +206,11 @@ flowchart TD
 - 长期记忆。
 - 评测结果。
 
-```mermaid
-flowchart LR
-    Request["用户请求"] --> Run["AgentRun"]
-    Run --> Trace["工具轨迹 + 引用证据"]
-    Trace --> Memory["长期记忆"]
-    Trace --> Eval["自动化评测"]
-    Memory --> Next["下一轮上下文"]
-    Eval --> Improve["质量诊断与迭代"]
-    Next --> Request
-    Improve --> Request
-```
+<p align="center">
+  <a href="docs/images/architecture/09-quality-loop.png">
+    <img src="docs/images/architecture/09-quality-loop.png" alt="数据沉淀、记忆和评测构成的质量闭环" width="820">
+  </a>
+</p>
 
 这些记录让系统具备可追踪、可复盘、可评测的能力。
 
@@ -287,6 +230,12 @@ Agent 一旦持续工作，上下文会快速累积：用户消息、模型回�
 - 与当前问题相关的历史通过 RAG 或证据检索重新召回。
 - 很长的工具结果只保留来源、关键片段和恢复方式。
 - 历史过长时记录压缩起点，后续对话从摘要继续。
+
+<p align="center">
+  <a href="docs/images/architecture/10-context-compression.png">
+    <img src="docs/images/architecture/10-context-compression.png" alt="长上下文压缩与历史组织策略" width="820">
+  </a>
+</p>
 
 > 压缩不是让 Agent 忘掉过去，而是让它带着更清楚、更轻量的过去继续工作。
 
