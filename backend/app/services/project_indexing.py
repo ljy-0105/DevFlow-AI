@@ -529,8 +529,8 @@ def scan_project_index(db: Session, repo: Repository) -> dict[str, Any]:
             PROJECT_INDEX_SOURCE_TYPES,
             payloads,
             commit=False,
-            generate_embeddings=False,
-            sync_vector_store=False,
+            generate_embeddings=True,
+            sync_vector_store=True,
         )
         summary = _build_summary(repo, root, candidates, len(docs), discovery)
         row = _get_or_create_state(db, repo.id)

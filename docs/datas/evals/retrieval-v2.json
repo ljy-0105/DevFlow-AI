@@ -1,0 +1,130 @@
+{
+  "name": "task-planner-interview-retrieval-v2",
+  "description": "任务规划实验室仓库的检索层评测集 v2。用例分两类：lexical（问题与文档存在显式词汇重叠，BM25 应占优）与 semantic（问题与文档零词汇重叠、只能靠语义匹配，向量检索应占优）。source_file 只能指向 retrieval_mode=rag 的文档类型（project_doc），因为 project_overview / project_manifest 被策略标记为 direct、不参与 RAG 检索。",
+  "repo": "ljy-0105/task-planner-interview",
+  "notes": [
+    "lx-06 原设计为 package.json 依赖查询，实测 project_manifest 的 retrieval_mode=direct，is_searchable_source()=False，该文档永远不进入检索候选，故移除。",
+    "本项目代码、文档均为中文，BM25 依托 _tokens() 的字符切分；semantic 类用例刻意使用与文档零重叠的口语化表述。"
+  ],
+  "cases": [
+    {
+      "id": "lx-01",
+      "kind": "lexical",
+      "question": "模拟接口返回失败要怎么触发？",
+      "reference": "添加一条包含 [fail] 的任务即可让模拟接口明确返回失败。",
+      "source_file": "project_doc/模拟接口"
+    },
+    {
+      "id": "lx-02",
+      "kind": "lexical",
+      "question": "项目要求什么版本的 Node.js 和 Wasp？",
+      "reference": "Node.js 24.14.1 或更新的兼容版本，Wasp 0.25.0。",
+      "source_file": "project_doc/环境"
+    },
+    {
+      "id": "lx-03",
+      "kind": "lexical",
+      "question": "基础检查需要执行哪些命令？",
+      "reference": "wasp compile、npx tsc --project tsconfig.src.json --noEmit、npx tsc --project tsconfig.wasp.json --noEmit。",
+      "source_file": "project_doc/基础检查"
+    },
+    {
+      "id": "lx-04",
+      "kind": "lexical",
+      "question": "main.wasp.ts 和 schema.prisma 分别放在哪个路径？",
+      "reference": "main.wasp.ts 是应用与路由配置，schema.prisma 定义用户、任务和生成结果。",
+      "source_file": "project_doc/代码入口"
+    },
+    {
+      "id": "lx-05",
+      "kind": "lexical",
+      "question": "第三方代码的版权声明在哪里？",
+      "reference": "见 LICENSE 和 THIRD_PARTY_NOTICES.md。",
+      "source_file": "project_doc/开源许可"
+    },
+    {
+      "id": "lx-06",
+      "kind": "lexical",
+      "question": "用户额度的初始值可以设成哪几个数？",
+      "reference": "User.credits 可以改为 0、1 或 3，改完刷新页面。",
+      "source_file": "project_doc/模拟接口"
+    },
+    {
+      "id": "lx-07",
+      "kind": "lexical",
+      "question": "模拟接口一次调用平均要等多久？",
+      "reference": "普通任务约 500 毫秒后返回模拟日程。",
+      "source_file": "project_doc/模拟接口"
+    },
+    {
+      "id": "sem-01",
+      "kind": "semantic",
+      "question": "我要怎么确认一次请求从头到尾是成功还是失败了？",
+      "reference": "服务端记录 mock-ai.started / succeeded / failed 日志，同一次调用使用相同 callId。",
+      "source_file": "project_doc/模拟接口"
+    },
+    {
+      "id": "sem-02",
+      "kind": "semantic",
+      "question": "本地开发要跑起来需要先准备哪些前置条件？",
+      "reference": "需要 Node.js 24.14.1+、Wasp 0.25.0、PostgreSQL，Windows 需 WSL2 并把项目放在 Linux 文件系统；先复制 .env 模板、wasp install，再启动数据库。",
+      "source_file": "project_doc/环境"
+    },
+    {
+      "id": "sem-03",
+      "kind": "semantic",
+      "question": "有没有什么地方明确说了当前实现是不完整的？",
+      "reference": "TASK.md 指出项目中的额度处理是待改进的初始版本。",
+      "source_file": "project_doc/任务"
+    },
+    {
+      "id": "sem-04",
+      "kind": "semantic",
+      "question": "用户输入的任务会被送到哪里处理，界面上又在哪展示结果？",
+      "reference": "src/demo-ai-app/DemoAppPage.tsx 负责任务输入和日程展示，operations.ts 是服务端操作，mockAi.ts 是本地模拟接口。",
+      "source_file": "project_doc/代码入口"
+    },
+    {
+      "id": "sem-05",
+      "kind": "semantic",
+      "question": "这个系统需要联网调用外部大模型服务吗？",
+      "reference": "不需要。模型接口完全在本地运行，无需 API Key 或第三方服务账号。",
+      "source_file": "project_doc/任务规划实验室"
+    },
+    {
+      "id": "sem-06",
+      "kind": "semantic",
+      "question": "什么东西能让我在不碰数据库客户端的情况下直接看表里的数据？",
+      "reference": "用 wasp db studio 查看数据。",
+      "source_file": "project_doc/模拟接口"
+    },
+    {
+      "id": "sem-07",
+      "kind": "semantic",
+      "question": "多个同学一起改这个项目，提交代码有没有什么约定？",
+      "reference": "第三方代码的版权声明与使用条件见 LICENSE 和 THIRD_PARTY_NOTICES.md。",
+      "source_file": "project_doc/开源许可"
+    },
+    {
+      "id": "sem-08",
+      "kind": "semantic",
+      "question": "如果我在 Windows 上直接敲命令会不会出问题？",
+      "reference": "Windows 使用 WSL2，并将项目放在 Linux 文件系统中。",
+      "source_file": "project_doc/环境"
+    },
+    {
+      "id": "sem-09",
+      "kind": "semantic",
+      "question": "改完之后页面上的数字没变，我该做什么？",
+      "reference": "手动修改数据后刷新页面即可看到 User.credits 变化。",
+      "source_file": "project_doc/模拟接口"
+    },
+    {
+      "id": "sem-10",
+      "kind": "semantic",
+      "question": "这个仓库是做什么用的，属于什么性质的项目？",
+      "reference": "任务规划实验室，一个用于产品与开发练习的本地项目，也是产品与技术实习生实践题。",
+      "source_file": "project_doc/任务规划实验室"
+    }
+  ]
+}

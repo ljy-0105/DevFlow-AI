@@ -370,3 +370,32 @@ DevFlow AI 的系统结构可以概括为：
 最终链路是：
 
 > **用户提出问题，系统定位上下文，RAG 和工具负责取证，ChatAgent 负责调度，专用 Agent 负责专项分析，多 Agent 工作流负责复杂判断，最后把过程沉淀成记忆、记录和评测数据。**
+
+## 检索层评测结果
+
+评测基于真实运行环境（PostgreSQL + Milvus `devflow_rag_qwen1024`，1024 维 COSINE，本地 `Qwen/Qwen3-Embedding-0.6B`），使用 `docs/datas/evals/retrieval-v2.json` 的 17 条用例，Top-K = 5。评测只覆盖检索层，不调用 LLM，结果可离线复现。
+
+| 配置 | Recall@5 | MRR | nDCG | 语义题 Recall | 词法题 Recall | 平均延迟 |
+|---|---|---|---|---|---|---|
+| BM25 全文检索 | 0.8824 | 0.7843 | 0.8095 | 0.8000 | 1.0000 | 3.9 ms |
+| 向量检索 | **1.0000** | 0.8157 | 0.8617 | **1.0000** | 1.0000 | 3128.8 ms |
+| 混合检索（无重排） | **1.0000** | **0.8824** | **0.9113** | **1.0000** | 1.0000 | **11.2 ms** |
+| 混合检索 + 重排 | 1.0000 | 0.8402 | 0.8793 | 1.0000 | 1.0000 | 20.3 ms |
+
+关键结论：
+
+- BM25 在语义题上的 Recall 只有 0.8000，向量召回将其补全到 1.0000，验证了两路召回的必要性。
+- 混合检索取得最高 MRR（0.8824），明显优于单一向量检索（0.8157）。
+- 当前重排器在该评测集上没有带来正向收益（MRR 0.8824 → 0.8402），因此不将重排作为默认增益项宣传。
+- query embedding 缓存将单次检索延迟降到 11.2 ms；缓存命中时 embedding 计算从约 538.7 ms 降至 3.3 ms（约 163.8×）。
+
+完整评测记录、缺陷定位与修复见 [docs/datas/evals/REPORT.md](docs/datas/evals/REPORT.md)。
+
+复现方式：
+
+```powershell
+backend/.venv/Scripts/python.exe scripts/run_retrieval_eval.py `
+  --suite docs/datas/evals/retrieval-v2.json `
+  --top-k 5 --fetch-limit 5 `
+  --out docs/datas/evals/result-v2-postfix.json
+```

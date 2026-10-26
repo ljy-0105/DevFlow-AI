@@ -1,0 +1,705 @@
+{
+  "suite": "retrieval-v2.json",
+  "repo": "ljy-0105/task-planner-interview",
+  "generated_at": "2026-10-25T18:09:25+0800",
+  "embedding_provider": "qwen_local",
+  "milvus_enabled": "true",
+  "configs": [
+    {
+      "label": "BM25 全文检索",
+      "retrieval_method": "fulltext",
+      "apply_rerank": false,
+      "top_k": 5,
+      "fetch_limit": 5,
+      "cases": 17,
+      "metrics": {
+        "recall_at_k": 0.8824,
+        "precision_at_k": 0.1824,
+        "mrr": 0.7843,
+        "ndcg": 0.8095
+      },
+      "by_kind": {
+        "lexical": {
+          "cases": 7,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.2071,
+          "mrr": 0.9048,
+          "ndcg": 0.9286
+        },
+        "semantic": {
+          "cases": 10,
+          "recall_at_k": 0.8,
+          "precision_at_k": 0.165,
+          "mrr": 0.7,
+          "ndcg": 0.7262
+        }
+      },
+      "latency_ms": {
+        "avg": 3.94,
+        "median": 3.86,
+        "max": 5.97
+      },
+      "hit_rate": 0.8824,
+      "per_case": [
+        {
+          "id": "lx-01",
+          "kind": "lexical",
+          "question": "模拟接口返回失败要怎么触发？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-02",
+          "kind": "lexical",
+          "question": "项目要求什么版本的 Node.js 和 Wasp？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-03",
+          "kind": "lexical",
+          "question": "基础检查需要执行哪些命令？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 4
+        },
+        {
+          "id": "lx-04",
+          "kind": "lexical",
+          "question": "main.wasp.ts 和 schema.prisma 分别放在哪个路径？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-05",
+          "kind": "lexical",
+          "question": "第三方代码的版权声明在哪里？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-06",
+          "kind": "lexical",
+          "question": "用户额度的初始值可以设成哪几个数？",
+          "hit": true,
+          "first_hit_rank": 3,
+          "returned": 5
+        },
+        {
+          "id": "lx-07",
+          "kind": "lexical",
+          "question": "模拟接口一次调用平均要等多久？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-01",
+          "kind": "semantic",
+          "question": "我要怎么确认一次请求从头到尾是成功还是失败了？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-02",
+          "kind": "semantic",
+          "question": "本地开发要跑起来需要先准备哪些前置条件？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-03",
+          "kind": "semantic",
+          "question": "有没有什么地方明确说了当前实现是不完整的？",
+          "hit": false,
+          "first_hit_rank": null,
+          "returned": 5
+        },
+        {
+          "id": "sem-04",
+          "kind": "semantic",
+          "question": "用户输入的任务会被送到哪里处理，界面上又在哪展示结果？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-05",
+          "kind": "semantic",
+          "question": "这个系统需要联网调用外部大模型服务吗？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-06",
+          "kind": "semantic",
+          "question": "什么东西能让我在不碰数据库客户端的情况下直接看表里的数据？",
+          "hit": true,
+          "first_hit_rank": 2,
+          "returned": 5
+        },
+        {
+          "id": "sem-07",
+          "kind": "semantic",
+          "question": "多个同学一起改这个项目，提交代码有没有什么约定？",
+          "hit": false,
+          "first_hit_rank": null,
+          "returned": 5
+        },
+        {
+          "id": "sem-08",
+          "kind": "semantic",
+          "question": "如果我在 Windows 上直接敲命令会不会出问题？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 4
+        },
+        {
+          "id": "sem-09",
+          "kind": "semantic",
+          "question": "改完之后页面上的数字没变，我该做什么？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-10",
+          "kind": "semantic",
+          "question": "这个仓库是做什么用的，属于什么性质的项目？",
+          "hit": true,
+          "first_hit_rank": 2,
+          "returned": 5
+        }
+      ]
+    },
+    {
+      "label": "向量检索",
+      "retrieval_method": "vector",
+      "apply_rerank": false,
+      "top_k": 5,
+      "fetch_limit": 5,
+      "cases": 17,
+      "metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.2,
+        "mrr": 0.8157,
+        "ndcg": 0.8617
+      },
+      "by_kind": {
+        "lexical": {
+          "cases": 7,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.2,
+          "mrr": 0.7905,
+          "ndcg": 0.841
+        },
+        "semantic": {
+          "cases": 10,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.2,
+          "mrr": 0.8333,
+          "ndcg": 0.8762
+        }
+      },
+      "latency_ms": {
+        "avg": 2971.95,
+        "median": 1376.72,
+        "max": 28691.03
+      },
+      "hit_rate": 1.0,
+      "per_case": [
+        {
+          "id": "lx-01",
+          "kind": "lexical",
+          "question": "模拟接口返回失败要怎么触发？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-02",
+          "kind": "lexical",
+          "question": "项目要求什么版本的 Node.js 和 Wasp？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-03",
+          "kind": "lexical",
+          "question": "基础检查需要执行哪些命令？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-04",
+          "kind": "lexical",
+          "question": "main.wasp.ts 和 schema.prisma 分别放在哪个路径？",
+          "hit": true,
+          "first_hit_rank": 3,
+          "returned": 5
+        },
+        {
+          "id": "lx-05",
+          "kind": "lexical",
+          "question": "第三方代码的版权声明在哪里？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-06",
+          "kind": "lexical",
+          "question": "用户额度的初始值可以设成哪几个数？",
+          "hit": true,
+          "first_hit_rank": 5,
+          "returned": 5
+        },
+        {
+          "id": "lx-07",
+          "kind": "lexical",
+          "question": "模拟接口一次调用平均要等多久？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-01",
+          "kind": "semantic",
+          "question": "我要怎么确认一次请求从头到尾是成功还是失败了？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-02",
+          "kind": "semantic",
+          "question": "本地开发要跑起来需要先准备哪些前置条件？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-03",
+          "kind": "semantic",
+          "question": "有没有什么地方明确说了当前实现是不完整的？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-04",
+          "kind": "semantic",
+          "question": "用户输入的任务会被送到哪里处理，界面上又在哪展示结果？",
+          "hit": true,
+          "first_hit_rank": 2,
+          "returned": 5
+        },
+        {
+          "id": "sem-05",
+          "kind": "semantic",
+          "question": "这个系统需要联网调用外部大模型服务吗？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-06",
+          "kind": "semantic",
+          "question": "什么东西能让我在不碰数据库客户端的情况下直接看表里的数据？",
+          "hit": true,
+          "first_hit_rank": 3,
+          "returned": 5
+        },
+        {
+          "id": "sem-07",
+          "kind": "semantic",
+          "question": "多个同学一起改这个项目，提交代码有没有什么约定？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-08",
+          "kind": "semantic",
+          "question": "如果我在 Windows 上直接敲命令会不会出问题？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-09",
+          "kind": "semantic",
+          "question": "改完之后页面上的数字没变，我该做什么？",
+          "hit": true,
+          "first_hit_rank": 2,
+          "returned": 5
+        },
+        {
+          "id": "sem-10",
+          "kind": "semantic",
+          "question": "这个仓库是做什么用的，属于什么性质的项目？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        }
+      ]
+    },
+    {
+      "label": "混合检索（无重排）",
+      "retrieval_method": "hybrid",
+      "apply_rerank": false,
+      "top_k": 5,
+      "fetch_limit": 5,
+      "cases": 17,
+      "metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.2,
+        "mrr": 0.8824,
+        "ndcg": 0.9113
+      },
+      "by_kind": {
+        "lexical": {
+          "cases": 7,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.2,
+          "mrr": 0.8929,
+          "ndcg": 0.9187
+        },
+        "semantic": {
+          "cases": 10,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.2,
+          "mrr": 0.875,
+          "ndcg": 0.9062
+        }
+      },
+      "latency_ms": {
+        "avg": 9.95,
+        "median": 9.67,
+        "max": 12.04
+      },
+      "hit_rate": 1.0,
+      "per_case": [
+        {
+          "id": "lx-01",
+          "kind": "lexical",
+          "question": "模拟接口返回失败要怎么触发？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-02",
+          "kind": "lexical",
+          "question": "项目要求什么版本的 Node.js 和 Wasp？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-03",
+          "kind": "lexical",
+          "question": "基础检查需要执行哪些命令？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-04",
+          "kind": "lexical",
+          "question": "main.wasp.ts 和 schema.prisma 分别放在哪个路径？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-05",
+          "kind": "lexical",
+          "question": "第三方代码的版权声明在哪里？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-06",
+          "kind": "lexical",
+          "question": "用户额度的初始值可以设成哪几个数？",
+          "hit": true,
+          "first_hit_rank": 4,
+          "returned": 5
+        },
+        {
+          "id": "lx-07",
+          "kind": "lexical",
+          "question": "模拟接口一次调用平均要等多久？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-01",
+          "kind": "semantic",
+          "question": "我要怎么确认一次请求从头到尾是成功还是失败了？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-02",
+          "kind": "semantic",
+          "question": "本地开发要跑起来需要先准备哪些前置条件？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-03",
+          "kind": "semantic",
+          "question": "有没有什么地方明确说了当前实现是不完整的？",
+          "hit": true,
+          "first_hit_rank": 4,
+          "returned": 5
+        },
+        {
+          "id": "sem-04",
+          "kind": "semantic",
+          "question": "用户输入的任务会被送到哪里处理，界面上又在哪展示结果？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-05",
+          "kind": "semantic",
+          "question": "这个系统需要联网调用外部大模型服务吗？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-06",
+          "kind": "semantic",
+          "question": "什么东西能让我在不碰数据库客户端的情况下直接看表里的数据？",
+          "hit": true,
+          "first_hit_rank": 2,
+          "returned": 5
+        },
+        {
+          "id": "sem-07",
+          "kind": "semantic",
+          "question": "多个同学一起改这个项目，提交代码有没有什么约定？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-08",
+          "kind": "semantic",
+          "question": "如果我在 Windows 上直接敲命令会不会出问题？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-09",
+          "kind": "semantic",
+          "question": "改完之后页面上的数字没变，我该做什么？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-10",
+          "kind": "semantic",
+          "question": "这个仓库是做什么用的，属于什么性质的项目？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        }
+      ]
+    },
+    {
+      "label": "混合检索 + 重排",
+      "retrieval_method": "hybrid",
+      "apply_rerank": true,
+      "top_k": 5,
+      "fetch_limit": 5,
+      "cases": 17,
+      "metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.2,
+        "mrr": 0.8402,
+        "ndcg": 0.8793
+      },
+      "by_kind": {
+        "lexical": {
+          "cases": 7,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.2,
+          "mrr": 0.8929,
+          "ndcg": 0.9187
+        },
+        "semantic": {
+          "cases": 10,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.2,
+          "mrr": 0.8033,
+          "ndcg": 0.8518
+        }
+      },
+      "latency_ms": {
+        "avg": 12.61,
+        "median": 12.2,
+        "max": 17.49
+      },
+      "hit_rate": 1.0,
+      "per_case": [
+        {
+          "id": "lx-01",
+          "kind": "lexical",
+          "question": "模拟接口返回失败要怎么触发？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-02",
+          "kind": "lexical",
+          "question": "项目要求什么版本的 Node.js 和 Wasp？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-03",
+          "kind": "lexical",
+          "question": "基础检查需要执行哪些命令？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-04",
+          "kind": "lexical",
+          "question": "main.wasp.ts 和 schema.prisma 分别放在哪个路径？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-05",
+          "kind": "lexical",
+          "question": "第三方代码的版权声明在哪里？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "lx-06",
+          "kind": "lexical",
+          "question": "用户额度的初始值可以设成哪几个数？",
+          "hit": true,
+          "first_hit_rank": 4,
+          "returned": 5
+        },
+        {
+          "id": "lx-07",
+          "kind": "lexical",
+          "question": "模拟接口一次调用平均要等多久？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-01",
+          "kind": "semantic",
+          "question": "我要怎么确认一次请求从头到尾是成功还是失败了？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-02",
+          "kind": "semantic",
+          "question": "本地开发要跑起来需要先准备哪些前置条件？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-03",
+          "kind": "semantic",
+          "question": "有没有什么地方明确说了当前实现是不完整的？",
+          "hit": true,
+          "first_hit_rank": 5,
+          "returned": 5
+        },
+        {
+          "id": "sem-04",
+          "kind": "semantic",
+          "question": "用户输入的任务会被送到哪里处理，界面上又在哪展示结果？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-05",
+          "kind": "semantic",
+          "question": "这个系统需要联网调用外部大模型服务吗？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-06",
+          "kind": "semantic",
+          "question": "什么东西能让我在不碰数据库客户端的情况下直接看表里的数据？",
+          "hit": true,
+          "first_hit_rank": 2,
+          "returned": 5
+        },
+        {
+          "id": "sem-07",
+          "kind": "semantic",
+          "question": "多个同学一起改这个项目，提交代码有没有什么约定？",
+          "hit": true,
+          "first_hit_rank": 3,
+          "returned": 5
+        },
+        {
+          "id": "sem-08",
+          "kind": "semantic",
+          "question": "如果我在 Windows 上直接敲命令会不会出问题？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-09",
+          "kind": "semantic",
+          "question": "改完之后页面上的数字没变，我该做什么？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        },
+        {
+          "id": "sem-10",
+          "kind": "semantic",
+          "question": "这个仓库是做什么用的，属于什么性质的项目？",
+          "hit": true,
+          "first_hit_rank": 1,
+          "returned": 5
+        }
+      ]
+    }
+  ]
+}

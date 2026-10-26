@@ -183,6 +183,65 @@ def embed_text(text: str, dimensions: int | None = None) -> list[float]:
     return embed_texts([text], dimensions=dimensions)[0]
 
 
+def _embed_query_uncached(
+    text: str,
+    dimensions: int,
+    provider: str,
+    model: str | None,
+) -> tuple[float, ...]:
+    """按当前 embedding 配置计算单条 query 向量。
+
+    返回 tuple 才能进 lru_cache（list 不可哈希）。调用方负责转回 list。
+    """
+    vector = embed_knowledge_texts(
+        [text],
+        provider=provider,
+        model=model,
+        dimensions=dimensions,
+        is_query=True,
+    )[0]
+    return tuple(vector)
+
+
+# 检索热路径上每次都要给 query 算一次向量。以 qwen_local 为例，单次前向约 0.5s，
+# 占一次检索总延迟的 ~87%（Milvus 侧仅 ~76ms）；重复/近重复 query（翻页、重试、
+# 多轮追问）会把这笔开销重复支付。这里按 (query, provider, model, dimensions)
+# 做进程内缓存，命中时直接跳过模型前向。
+# 注意：这是进程内缓存，多 worker 部署下各自独立；如需跨进程共享应换成 Redis。
+@lru_cache(maxsize=512)
+def _embed_query_cached(
+    text: str,
+    dimensions: int,
+    provider: str,
+    model: str | None,
+) -> tuple[float, ...]:
+    return _embed_query_uncached(text, dimensions, provider, model)
+
+
+def embed_query(text: str, dimensions: int | None = None) -> list[float]:
+    """计算检索 query 的向量，带进程内缓存。"""
+    resolved_dimensions = dimensions or settings.embedding_dimensions
+    provider = normalize_embedding_provider(settings.embedding_provider)
+    return list(
+        _embed_query_cached(
+            text or "",
+            resolved_dimensions,
+            provider,
+            settings.embedding_model,
+        )
+    )
+
+
+def clear_query_embedding_cache() -> None:
+    """清空 query 向量缓存；切换 embedding 模型或配置后调用。"""
+    _embed_query_cached.cache_clear()
+
+
+def query_embedding_cache_info() -> Any:
+    """暴露缓存命中统计，便于观测与压测验证。"""
+    return _embed_query_cached.cache_info()
+
+
 def embed_knowledge_texts(
     texts: list[str],
     *,

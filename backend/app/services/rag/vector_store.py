@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.models import Document
-from app.services.rag.embeddings import embed_text, embed_texts, embedding_contract, embedding_provider_name
+from app.services.rag.embeddings import embed_query, embed_text, embed_texts, embedding_contract, embedding_provider_name
 from app.services.rag.source_policy import policy_metadata, should_vectorize
 
 logger = logging.getLogger(__name__)
@@ -298,7 +298,7 @@ def search_milvus_documents(
 ) -> list[dict[str, Any]]:
     store = _milvus_store()
     try:
-        vector = query_embedding or embed_text(query, settings.embedding_dimensions)
+        vector = query_embedding or embed_query(query, settings.embedding_dimensions)
         return store.search(
             repo_id=repo_id,
             query_embedding=vector,
